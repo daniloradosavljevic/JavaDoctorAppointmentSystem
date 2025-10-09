@@ -11,13 +11,7 @@ import poslovne.aplikacije.messaging.MessagingReportingService;
 @Component
 public class Runner implements CommandLineRunner {
 
-	private final RabbitTemplate rabbitTemplate;
-	private final MessagingReportingService receiver;
-
-	public Runner(MessagingReportingService receiver, RabbitTemplate rabbitTemplate) {
-		this.receiver = receiver;
-		this.rabbitTemplate = rabbitTemplate;
-	}
+	
 	
 	@Override
 	public void run(String... args) throws Exception {
