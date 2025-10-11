@@ -2,9 +2,16 @@ package poslovne.aplikacije.dto;
 
 import java.time.LocalDateTime;
 
+import javax.validation.constraints.Future;
+import javax.validation.constraints.NotNull;
+
 public class CreateAppointmentRequest {
+	@NotNull(message = "Doctor ID is required")
     private Long doctorId;
+	@NotNull(message = "Patient ID is required")
     private Long patientId;
+	@NotNull(message = "Appointment time is required")
+    @Future(message = "Appointment time must be in the future")
     private LocalDateTime appointmentTime;
 	public CreateAppointmentRequest(Long doctorId, Long patientId, LocalDateTime appointmentTime) {
 		super();

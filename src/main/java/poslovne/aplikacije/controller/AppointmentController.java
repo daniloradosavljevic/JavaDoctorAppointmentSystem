@@ -9,6 +9,8 @@ import poslovne.aplikacije.service.AppointmentService;
 
 import java.util.List;
 
+import javax.validation.Valid;
+
 @RestController
 @RequestMapping("/appointments")
 public class AppointmentController {
@@ -17,7 +19,7 @@ public class AppointmentController {
     private AppointmentService appointmentService;
 
     @PostMapping
-    public ResponseEntity<Appointment> createAppointment(@RequestBody CreateAppointmentRequest request) {
+    public ResponseEntity<Appointment> createAppointment(@Valid @RequestBody CreateAppointmentRequest request) {
         try {
             Appointment appointment = appointmentService.createAppointment(request);
             return ResponseEntity.ok(appointment);
