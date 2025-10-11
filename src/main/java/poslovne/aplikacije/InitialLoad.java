@@ -24,6 +24,12 @@ public class InitialLoad {
             patient.setLastName("Simic");
             patient.setContact("0601234567");
             patientRepo.save(patient);
+            
+            Patient patient2 = new Patient();
+            patient2.setFirstName("Simo");
+            patient2.setLastName("Zoranovic");
+            patient2.setContact("0601234568");
+            patientRepo.save(patient2);
         };
     }
 }
