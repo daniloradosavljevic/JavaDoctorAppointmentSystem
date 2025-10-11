@@ -3,6 +3,7 @@ package poslovne.aplikacije.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import poslovne.aplikacije.dto.CreateAppointmentRequest;
+import poslovne.aplikacije.dto.AppointmentEvent;
 import poslovne.aplikacije.model.Appointment;
 import poslovne.aplikacije.model.Doctor;
 import poslovne.aplikacije.model.Patient;
@@ -22,6 +23,8 @@ public class AppointmentService {
     private DoctorRepository doctorRepository;
     @Autowired
     private PatientRepository patientRepository;
+    @Autowired
+    private AppointmentMessagingService messagingService;
 
     public Appointment createAppointment(CreateAppointmentRequest request) {
         Optional<Doctor> doctorOpt = doctorRepository.findById(request.getDoctorId());
@@ -37,7 +40,16 @@ public class AppointmentService {
         appointment.setAppointmentTime(request.getAppointmentTime());
         appointment.setStatus(Appointment.Status.PENDING);
 
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+
+        AppointmentEvent event = new AppointmentEvent();
+        event.setDoctorId(saved.getDoctor().getId());
+        event.setPatientId(saved.getPatient().getId());
+        event.setAppointmentTime(saved.getAppointmentTime().toString());
+        event.setAppointmentId(saved.getId());
+        messagingService.sendAppointmentEvent(event);
+
+        return saved;
     }
 
     public List<Appointment> getAllAppointments() {
