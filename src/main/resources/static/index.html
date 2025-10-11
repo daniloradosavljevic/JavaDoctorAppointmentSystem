@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ambulanta - Zakazivanje pregleda</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #e9f0fa; }
+        .doctor-theme-header {
+            background: linear-gradient(120deg,#2563eb,#38bdf8);
+            color: white;
+            border-radius: 1rem;
+            padding: 2rem 1rem 1rem 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 24px #2563eb22;
+        }
+        .doctor-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #38bdf8; color: white;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-right: 0.5rem; font-size: 1.25rem;
+        }
+        .status-pill { padding: 0.25em 0.75em; border-radius: 1em; color: white; font-weight: 500;}
+        .status-pending { background: #fbbf24; }
+        .status-confirmed { background: #22c55e; }
+        .status-rejected { background: #ef4444; }
+        .card { border-radius: 1rem; }
+        .error { color: #ef4444; font-weight: 500;}
+        .success { color: #22c55e; font-weight: 500;}
+        .form-label { font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="doctor-theme-header text-center mb-4">
+            <h1><i class="bi bi-stethoscope"></i> Ambulanta - Zakazivanje pregleda</h1>
+            <p class="lead mb-0">Dobrodošli! Ovaj sistem omogućava efikasno zakazivanje termina kod vašeg lekara.<br>
+                <small class="text-white-50">Unesite podatke i proverite status zahteva.</small>
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-calendar-plus"></i> Novi pregled
+                    </div>
+                    <div class="card-body">
+                        <form id="appointmentForm">
+                            <div class="mb-3">
+                                <label for="doctorId" class="form-label"><i class="bi bi-person-badge"></i> ID Lekara</label>
+                                <input type="number" class="form-control" id="doctorId" required placeholder="Unesite ID lekara">
+                            </div>
+                            <div class="mb-3">
+                                <label for="patientId" class="form-label"><i class="bi bi-person"></i> ID Pacijenta</label>
+                                <input type="number" class="form-control" id="patientId" required placeholder="Unesite vaš ID">
+                            </div>
+                            <div class="mb-3">
+                                <label for="appointmentTime" class="form-label"><i class="bi bi-clock"></i> Datum i vreme pregleda</label>
+                                <input type="datetime-local" class="form-control" id="appointmentTime" required>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-send"></i> Pošalji zahtev
+                            </button>
+                        </form>
+                        <div id="formMessage" class="mt-2"></div>
+                        <div class="mt-3 text-muted small">
+                            <i class="bi bi-info-circle"></i> Novi zahtev će imati status <span class="status-pill status-pending">PENDING</span> dok ga doktor ne potvrdi.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-list-check"></i> Pregled termina
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-6">
+                                <label for="statusFilter" class="form-label"><i class="bi bi-filter"></i> Filter po statusu</label>
+                                <select id="statusFilter" class="form-select">
+                                    <option value="">Svi statusi</option>
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="CONFIRMED">CONFIRMED</option>
+                                    <option value="REJECTED">REJECTED</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-outline-primary" type="button" onclick="loadAppointments()"><i class="bi bi-arrow-repeat"></i> Osveži</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table align-middle table-bordered" id="appointmentsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Lekar</th>
+                                        <th>Pacijent</th>
+                                        <th>Vreme</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div id="emptyListMsg" class="text-center text-muted mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-5">
+            <small class="text-muted">
+                <i class="bi bi-heart-pulse"></i> Ambulanta IS &copy; 2025 | FIN Master Projekat
+            </small>
+        </div>
+    </div>
+       <script>
+    const API_BASE = "http://localhost:8080";
+    let lastCreatedAppointmentId = null;
+    let lastKnownStatus = null;
+    let isFetching = false; 
+
+    document.getElementById("appointmentForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const doctorId = document.getElementById("doctorId").value;
+        const patientId = document.getElementById("patientId").value;
+        const appointmentTime = document.getElementById("appointmentTime").value;
+        const msgDiv = document.getElementById("formMessage");
+
+        try {
+            const res = await fetch(`${API_BASE}/appointments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    doctorId: Number(doctorId),
+                    patientId: Number(patientId),
+                    appointmentTime
+                })
+            });
+
+            if (res.ok) {
+                const appointment = await res.json();
+                lastCreatedAppointmentId = appointment.id;
+                lastKnownStatus = appointment.status;
+                msgDiv.innerHTML = `
+                    <span class="success">
+                        <i class="bi bi-check-circle"></i> Termin uspešno poslat! 
+                        Status: <span class="status-pill status-${appointment.status.toLowerCase()}">${appointment.status}</span> 
+                        (Ažurira se automatski)
+                    </span>`;
+                await loadAppointments();
+            } else {
+                const txt = await res.text();
+                msgDiv.innerHTML = `<span class="error"><i class="bi bi-x-circle"></i> ${txt}</span>`;
+            }
+        } catch (err) {
+            msgDiv.innerHTML = `<span class="error"><i class="bi bi-x-circle"></i> Greška: ${err.message}</span>`;
+        }
+    });
+
+    async function loadAppointments() {
+        if (isFetching) return; 
+        isFetching = true;
+
+        const status = document.getElementById("statusFilter").value;
+        const timestamp = new Date().getTime(); 
+        let url = `${API_BASE}/appointments?_t=${timestamp}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+
+        try {
+            const res = await fetch(url, {
+                headers: {
+                    "Cache-Control": "no-store",
+                    "Pragma": "no-cache",
+                    "Expires": "0"
+                }
+            });
+
+            if (!res.ok) throw new Error(`Greška: ${res.status}`);
+            const data = await res.json();
+
+            const tbody = document.querySelector("#appointmentsTable tbody");
+            const emptyMsg = document.getElementById("emptyListMsg");
+            tbody.innerHTML = "";
+
+            if (data.length === 0) {
+                emptyMsg.textContent = "Nema termina za odabrani filter.";
+            } else {
+                emptyMsg.textContent = "";
+            }
+
+            if (lastCreatedAppointmentId) {
+                const myAppointment = data.find(app => app.id === lastCreatedAppointmentId);
+                if (myAppointment && myAppointment.status !== lastKnownStatus) {
+                    lastKnownStatus = myAppointment.status;
+                    document.getElementById("formMessage").innerHTML =
+                        `<span class="success"><i class="bi bi-check-circle"></i> Status vašeg termina je sada: 
+                        <span class="status-pill status-${myAppointment.status.toLowerCase()}">${myAppointment.status}</span></span>`;
+                }
+            }
+
+            data.forEach(app => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${app.id}</td>
+                        <td>
+                            <span class="doctor-avatar"><i class="bi bi-person-badge"></i></span>
+                            ${app.doctor ? app.doctor.firstName + " " + app.doctor.lastName : app.doctorId}
+                        </td>
+                        <td>
+                            <span class="doctor-avatar bg-primary"><i class="bi bi-person"></i></span>
+                            ${app.patient ? app.patient.firstName + " " + app.patient.lastName : app.patientId}
+                        </td>
+                        <td>${app.appointmentTime.replace("T", " ")}</td>
+                        <td><span class="status-pill status-${app.status.toLowerCase()}">${app.status}</span></td>
+                    </tr>`;
+            });
+        } catch (err) {
+            document.getElementById("emptyListMsg").textContent = "Greška: " + err.message;
+        } finally {
+            isFetching = false; 
+        }
+    }
+
+    document.getElementById("statusFilter").addEventListener("change", loadAppointments);
+    loadAppointments();
+    setInterval(() => {
+        loadAppointments();
+    }, 5000);
+</script>
+</body>
+</html>
+
+</html>
