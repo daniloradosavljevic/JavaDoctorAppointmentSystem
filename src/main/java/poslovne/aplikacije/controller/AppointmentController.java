@@ -1,10 +1,14 @@
 package poslovne.aplikacije.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import poslovne.aplikacije.dto.CreateAppointmentRequest;
 import poslovne.aplikacije.model.Appointment;
+//import poslovne.aplikacije.dto.CreateAppointmentRequest;
+//import poslovne.aplikacije.model.Appointment;
 import poslovne.aplikacije.service.AppointmentService;
 
 import java.util.List;
